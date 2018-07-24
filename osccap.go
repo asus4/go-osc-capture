@@ -37,7 +37,8 @@ func main() {
 				if file == "" {
 					return cli.NewExitError("Set the output file", 1)
 				}
-				err := recorder(c.Uint("port"), file)
+				multicast := c.String("multicast")
+				err := recorder(c.Uint("port"), file, multicast)
 				if err != nil {
 					return err
 				}

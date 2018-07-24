@@ -29,7 +29,7 @@ func osc2csv(time float32, msg *osc.Message) []string {
 	return cells
 }
 
-func readRoutine(conn *net.PacketConn, writer *csv.Writer, isClose chan bool) error {
+func readRoutine(conn *net.UDPConn, writer *csv.Writer, isClose chan bool) error {
 	startTime := time.Now()
 
 	server := &osc.Server{}
@@ -45,7 +45,7 @@ func readRoutine(conn *net.PacketConn, writer *csv.Writer, isClose chan bool) er
 		}
 
 		// Receive packet
-		packet, err := server.ReceivePacket(*conn)
+		packet, err := server.ReceivePacket(conn)
 		if err != nil {
 			fmt.Println("Server error: " + err.Error())
 			os.Exit(1)
@@ -75,7 +75,7 @@ func readRoutine(conn *net.PacketConn, writer *csv.Writer, isClose chan bool) er
 	}
 }
 
-func recorder(port uint, path string) error {
+func recorder(port uint, path string, multicastAddr string) error {
 
 	// make File
 	file, err := os.Create(path)
@@ -90,17 +90,31 @@ func recorder(port uint, path string) error {
 	writer := csv.NewWriter(file)
 
 	// open server
-	address := "0.0.0.0:" + fmt.Sprint(port)
-	conn, err := net.ListenPacket("udp", address)
+	var conn *net.UDPConn
+	multicastIP := net.ParseIP(multicastAddr)
+	if multicastIP.IsMulticast() {
+		addr := &net.UDPAddr{
+			IP:   multicastIP,
+			Port: int(port),
+		}
+		conn, err = net.ListenMulticastUDP("udp", nil, addr)
+	} else {
+		addr := &net.UDPAddr{
+			IP:   net.IPv4zero,
+			Port: int(port),
+		}
+		conn, err = net.ListenUDP("udp", addr)
+	}
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
+	// }
 
 	// start go routine
 	fmt.Println("Press \"q\" to exit")
 	serverIsClose := make(chan bool)
-	go readRoutine(&conn, writer, serverIsClose)
+	go readRoutine(conn, writer, serverIsClose)
 
 	// read exit status
 	reader := bufio.NewReader(os.Stdin)
