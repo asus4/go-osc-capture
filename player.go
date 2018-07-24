@@ -30,7 +30,8 @@ func csv2osc(csv []string) (float32, *osc.Message, error) {
 	for _, arg := range args {
 		if isNumber.Match([]byte(arg)) {
 			// Int
-			msg.Append(strconv.ParseInt(arg, 10, 32))
+			n, _ := strconv.ParseInt(arg, 10, 32)
+			msg.Append(int32(n))
 		} else {
 			n, err := strconv.ParseFloat(arg, 32)
 			if err == nil {
@@ -56,6 +57,7 @@ func playRoutine(client *osc.Client, reader *csv.Reader, isFinished chan bool) e
 		if err == io.EOF {
 			break
 		} else if err != nil {
+			log.Println("reader error", err)
 			break
 		}
 
@@ -83,6 +85,7 @@ func player(addr string, port uint, path string) error {
 	}
 	defer file.Close()
 	reader := csv.NewReader(file)
+	reader.FieldsPerRecord = -1 // Arrow multiple fields
 
 	log.Println("player start")
 
